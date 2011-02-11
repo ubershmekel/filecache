@@ -11,10 +11,14 @@ from filecache import __get_cache_name as gcn
 
 class TestFilecache(unittest.TestCase):
     def setUp(self):
-        def stub(): pass
-        fname = gcn(stub)
-        if os.path.isfile(fname):
-            os.remove(fname)
+        shelve_suffixes = ('.cache', '.cache.bak', '.cache.dir', '.cache.dat')
+        # os.listdir doesn't accept an empty string but dirname returns ''
+        here = os.path.dirname(__file__) or '.'
+        fname_list = os.listdir(here)
+        
+        for fname in fname_list:
+            if fname.endswith(shelve_suffixes):
+                os.remove(fname)
     
     def test_returns(self):
         # make sure the thing works

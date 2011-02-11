@@ -9,7 +9,7 @@ import sys
 import filecache
 DOCUMENTATION = filecache.__doc__
 
-VERSION = '0.61'
+VERSION = '0.62'
 
 # generate .rst file with documentation
 #open(os.path.join(os.path.dirname(__file__), 'documentation.rst'), 'w').write(DOCUMENTATION)
