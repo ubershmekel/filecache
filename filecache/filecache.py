@@ -23,6 +23,8 @@ NOTE: The cache isn't automatically cleaned, it is only overwritten. If your
     cache may forever grow. One day I might add a feature that once in every
     100validity scans the db for outdated stuff and erases.
 
+Tested on python 2.7 and 3.1
+	
 License: BSD, do what you wish with this. Could be awesome to hear if you found
 it useful and/or you have suggestions. ubershmekel at gmail
 
