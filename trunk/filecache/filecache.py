@@ -24,7 +24,7 @@ NOTE: The cache isn't automatically cleaned, it is only overwritten. If your
     100validity scans the db for outdated stuff and erases.
 
 Tested on python 2.7 and 3.1
-	
+
 License: BSD, do what you wish with this. Could be awesome to hear if you found
 it useful and/or you have suggestions. ubershmekel at gmail
 
@@ -78,7 +78,9 @@ def filecache(seconds_of_validity):
 
             # store in cache
             # NOTE: no need to __db.sync() because there was no mutation
+            # NOTE: it's importatnt to do __db.sync() because otherwise the cache doesn't survive Ctrl-Break!
             function.__db[key] = __retval(_time.time(), _pickle.dumps(retval))
+            function.__db.sync()
             
             return retval
 
