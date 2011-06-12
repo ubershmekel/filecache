@@ -21,7 +21,12 @@ NOTE: All arguments of the decorated function and the return value need to be
 NOTE: The cache isn't automatically cleaned, it is only overwritten. If your
     function can receive many different arguments that rarely repeat, your
     cache may forever grow. One day I might add a feature that once in every
-    100validity scans the db for outdated stuff and erases.
+    100 calls scans the db for outdated stuff and erases.
+
+NOTE: This is less useful on methods of a class because the instance (self)
+    is cached, and if the instance isn't the same, the cache isn't used. This
+    makes sense because class methods are affected by changes in whatever
+    is attached to self.
 
 Tested on python 2.7 and 3.1
 

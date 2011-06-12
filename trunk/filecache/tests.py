@@ -70,6 +70,33 @@ class TestFilecache(unittest.TestCase):
         imp.reload(stub_for_test)
         second = stub_for_test.the_time()
         self.assertEqual(first, second)
+        
+    def test_class_methods(self):
+        # won't work because class A isn't picklable
+        class A:
+            def __init__(self):
+                self.number = 1
+            
+            @filecache(5.0)
+            def donothing(self, x):
+                self.number += x
+                return self.number
+        
+        instance = B()
+        first = instance.donothing(1)
+        import pdb;pdb.set_trace()
+        second = instance.donothing(1)
+        self.assertEqual(first, second)
+
+class B:
+    def __init__(self):
+        self.number = 1
+    
+    @filecache(5.0)
+    def donothing(self, x):
+        self.number += x
+        return self.number
+
 
 if __name__ == '__main__':
     unittest.main()
