@@ -16,7 +16,7 @@ except Exception:
 import filecache
 DOCUMENTATION = filecache.__doc__
 
-VERSION = '0.65'
+VERSION = '0.66'
 
 SETUP_DICT = dict(
     name='filecache',
@@ -40,7 +40,7 @@ SETUP_DICT = dict(
   )
 
 if CMD_CLASS:
-    SETUP_DICT[cmdclass] = CMD_CLASS
+    SETUP_DICT['cmdclass'] = CMD_CLASS
 
 # generate .rst file with documentation
 #open(os.path.join(os.path.dirname(__file__), 'documentation.rst'), 'w').write(DOCUMENTATION)
