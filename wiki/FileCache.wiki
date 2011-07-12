@@ -29,5 +29,7 @@ Each time a decorated function is called, filecache checks in a [http://docs.pyt
 
 = Possible Future Plans =
 1. Add a cache cleaning function that's triggered in a smart way.
+
 2. Consider adding locks for multi-threaded or multi-process access. This might be tricky because shelve gives no multiple-user guarantees.
+
 3. Optimize a bit.
