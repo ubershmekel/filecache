@@ -3,16 +3,16 @@ filecache
 
 filecache is a decorator which saves the return value of functions even
 after the interpreter dies. For example this is useful on functions that download
-and parse webpages for example. All you need to do is specify for how long
+and parse webpages. All you need to do is specify how long
 the return values should be cached (use seconds, like time.sleep).
 
 USAGE:
 
-from filecache import filecache
-
-@filecache(24 * 60 * 60)
-def time_consuming_function(args):
-    # etc
+    from filecache import filecache
+    
+    @filecache(24 * 60 * 60)
+    def time_consuming_function(args):
+        # etc
 
 
 NOTE: All arguments of the decorated function and the return value need to be
@@ -48,7 +48,14 @@ __retval = _collections.namedtuple('__retval', 'timesig data')
 
 def __get_cache_name(function):
     module_name = _inspect.getfile(function)
-    return module_name + '.cache'
+    cache_name = module_name
+    
+    # fix for '<string>' or '<stdin>' in exec or interpreter usage.
+    cache_name = cache_name.replace('<', '_lt_')
+    cache_name = cache_name.replace('>', '_gt_')
+    
+    cache_name += '.cache'
+    return cache_name
                    
 def filecache(seconds_of_validity):
     '''

@@ -1,0 +1,2 @@
+recursive-include . *.txt *.py
+prune *.cmd
