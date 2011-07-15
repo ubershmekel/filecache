@@ -16,7 +16,7 @@ except Exception:
 import filecache
 DOCUMENTATION = filecache.__doc__
 
-VERSION = '0.66'
+VERSION = '0.69'
 
 SETUP_DICT = dict(
     name='filecache',

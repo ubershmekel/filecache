@@ -62,7 +62,7 @@ class TestFilecache(unittest.TestCase):
             return items.pop()
 
         first = popper()
-        # I would wait just for it exactly but time.time() isn't accurate enough.
+        # I would wait just for 'wait' exactly but time.time() isn't accurate enough.
         time.sleep(wait * 1.1)
         second = popper()
         
@@ -76,8 +76,23 @@ class TestFilecache(unittest.TestCase):
         imp.reload(stub_for_test)
         second = stub_for_test.the_time()
         self.assertEqual(first, second)
+    
+    def test_interpreter_usage(self):
+        '''
+        This test is good for exec or interpreter usage of filecache.
         
-    # TODO: maybe make this work somehow, problem is methods rely on instance
+        inspect.getfile(function) returned a bad filename for these cases.
+        
+        e.g. old exception:
+        IOError: [Errno 22] Invalid argument: '<string>.cache.dat'
+        '''
+        d = {}
+        exec('''from filecache import filecache\n@filecache(60)\ndef function(x): return x''',d ,d)
+        first = d['function'](13)
+        second = d['function'](13)
+        self.assertEqual(first, second)
+    
+    # TODO: maybe make class methods work somehow, problem is methods rely on instance
     #       members so I'd have to serialize the class maybe. A bit complex.
     def AAA_test_class_methods(self):
         # won't work because class A isn't picklable
