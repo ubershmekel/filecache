@@ -36,17 +36,21 @@ it useful and/or you have suggestions. ubershmekel at gmail
 '''
 
 
-import time as _time
-import shelve as _shelve
-import pickle as _pickle
+import collections as _collections
+import datetime as _datetime
 import functools as _functools
 import inspect as _inspect
-import collections as _collections
+import os as _os
+import pickle as _pickle
+import shelve as _shelve
 import sys as _sys
+import time as _time
+import traceback as _traceback
 
-__retval = _collections.namedtuple('__retval', 'timesig data')
+_retval = _collections.namedtuple('_retval', 'timesig data')
+_SRC_DIR = _os.path.dirname(_os.path.abspath(__file__))
 
-def __get_cache_name(function):
+def _get_cache_name(function):
     module_name = _inspect.getfile(function)
     cache_name = module_name
     
@@ -56,43 +60,72 @@ def __get_cache_name(function):
     
     cache_name += '.cache'
     return cache_name
-                   
-def filecache(seconds_of_validity):
+
+
+def _log_error(error_str):
+    try:
+        error_log_fname = _os.path.join(_SRC_DIR, 'filecache.err.log')
+        if _os.path.isfile(error_log_fname):
+            fhand = open(error_log_fname, 'a')
+        else:
+            fhand = open(error_log_fname, 'w')
+        fhand.write('[%s] %s\r\n' % (_datetime.datetime.now().isoformat(), error_str))
+        fhand.close()
+    except Exception:
+        pass
+
+
+def filecache(seconds_of_validity, fail_silently=True):
     '''
     filecache is called and the decorator should be returned.
     '''
     def filecache_decorator(function):
         @_functools.wraps(function)
         def function_with_cache(*args, **kwargs):
-            arguments = (args, kwargs)
+            try:
+                arguments = (args, kwargs)
 
-            # make sure cache is loaded
-            if not hasattr(function, '__db'):
-                function.__db = _shelve.open(__get_cache_name(function))
+                # make sure cache is loaded
+                if not hasattr(function, '_db'):
+                    function._db = _shelve.open(_get_cache_name(function))
 
-            # Check if you have a valid, cached answer, and return it.
-            # Sadly this is python version dependant
-            if _sys.version_info[0] == 2:
-                key = function.__name__ + _pickle.dumps(arguments)
-            else:
-                # NOTE: protocol=0 so it's ascii, this is crucial for py3k
-                #       because shelve only works with proper strings.
-                #       Otherwise, we'd get an exception because
-                #       function.__name__ is str but dumps returns bytes.
-                key = function.__name__ + _pickle.dumps(arguments, protocol=0).decode('ascii')
-                
-            if key in function.__db:
-                rv = function.__db[key]
-                if _time.time() - rv.timesig < seconds_of_validity:
-                    return _pickle.loads(rv.data)
-
+                # Check if you have a valid, cached answer, and return it.
+                # Sadly this is python version dependant
+                if _sys.version_info[0] == 2:
+                    arguments_pickle = _pickle.dumps(arguments)
+                else:
+                    # NOTE: protocol=0 so it's ascii, this is crucial for py3k
+                    #       because shelve only works with proper strings.
+                    #       Otherwise, we'd get an exception because
+                    #       function.__name__ is str but dumps returns bytes.
+                    arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii')
+                    
+                key = function.__name__ + arguments_pickle
+                if key in function._db:
+                    rv = function._db[key]
+                    if _time.time() - rv.timesig < seconds_of_validity:
+                        return rv.data
+            except Exception:
+                # in any case of failure, don't let filecache break the program
+                error_str = _traceback.format_exc()
+                _log_error(error_str)
+                if not fail_silently:
+                    raise
+            
             retval = function(*args, **kwargs)
 
             # store in cache
-            # NOTE: no need to __db.sync() because there was no mutation
-            # NOTE: it's importatnt to do __db.sync() because otherwise the cache doesn't survive Ctrl-Break!
-            function.__db[key] = __retval(_time.time(), _pickle.dumps(retval))
-            function.__db.sync()
+            # NOTE: no need to _db.sync() because there was no mutation
+            # NOTE: it's importatnt to do _db.sync() because otherwise the cache doesn't survive Ctrl-Break!
+            try:
+                function._db[key] = _retval(_time.time(), retval)
+                function._db.sync()
+            except Exception:
+                # in any case of failure, don't let filecache break the program
+                error_str = _traceback.format_exc()
+                _log_error(error_str)
+                if not fail_silently:
+                    raise
             
             return retval
 
