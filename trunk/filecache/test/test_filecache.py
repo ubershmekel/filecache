@@ -6,8 +6,7 @@ import time
 import random
 import os
 
-from filecache import filecache
-from filecache import __get_cache_name as gcn
+import filecache
 
 class TestFilecache(unittest.TestCase):
     def erase_all_cache_files(self):
@@ -28,7 +27,7 @@ class TestFilecache(unittest.TestCase):
     
     def test_returns(self):
         # make sure the thing works
-        @filecache(30)
+        @filecache.filecache(30)
         def donothing(x):
             return x
 
@@ -38,7 +37,7 @@ class TestFilecache(unittest.TestCase):
         
     def test_speeds(self):
         DELAY = 0.5
-        @filecache(30)
+        @filecache.filecache(30)
         def waiter(x):
             time.sleep(DELAY)
             return x
@@ -57,7 +56,7 @@ class TestFilecache(unittest.TestCase):
         wait = 0.1
         items = [1337, 69]
         
-        @filecache(wait)
+        @filecache.filecache(wait)
         def popper():
             return items.pop()
 
@@ -92,6 +91,30 @@ class TestFilecache(unittest.TestCase):
         second = d['function'](13)
         self.assertEqual(first, second)
     
+    def test_error_handling(self):
+        
+        temp = filecache._log_error
+        try:
+            passed_test = [False]
+            def mock_logger(*args, **kwargs):
+                passed_test[0] = True
+            
+            filecache._log_error = mock_logger
+            
+            def popper():
+                return 'arbitrary obj here'
+            
+            # put anything in _db that you know will break filecache
+            popper._db = 123
+            
+            popper = filecache.filecache(0.1)(popper)
+            
+            first = popper()
+            
+            self.assertTrue(passed_test[0])
+        finally:
+            filecache._log_error = temp
+
     # TODO: maybe make class methods work somehow, problem is methods rely on instance
     #       members so I'd have to serialize the class maybe. A bit complex.
     def AAA_test_class_methods(self):
@@ -100,7 +123,7 @@ class TestFilecache(unittest.TestCase):
             def __init__(self):
                 self.number = 1
             
-            @filecache(5.0)
+            @filecache.filecache(5.0)
             def donothing(self, x):
                 self.number += x
                 return self.number
@@ -115,7 +138,7 @@ class B:
     def __init__(self):
         self.number = 1
     
-    @filecache(5.0)
+    @filecache.filecache(5.0)
     def donothing(self, x):
         self.number += x
         return self.number
