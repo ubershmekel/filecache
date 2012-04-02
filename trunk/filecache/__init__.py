@@ -13,6 +13,10 @@ USAGE:
     @filecache(24 * 60 * 60)
     def time_consuming_function(args):
         # etc
+    
+    @filecache(filecache.YEAR)
+    def another_function(args):
+        # etc
 
 
 NOTE: All arguments of the decorated function and the return value need to be
@@ -33,6 +37,17 @@ Tested on python 2.7 and 3.1
 License: BSD, do what you wish with this. Could be awesome to hear if you found
 it useful and/or you have suggestions. ubershmekel at gmail
 
+
+A trick to invalidate a single value:
+
+    @filecache.filecache
+    def somefunc(x, y, z):
+        return x * y * z
+        
+    del somefunc._db[filecache._args_key(somefunc, (1,2,3), {})]
+    # or just iterate of somefunc._db (it's a shelve, like a dict) to find the right key.
+
+
 '''
 
 
@@ -46,11 +61,26 @@ import shelve as _shelve
 import sys as _sys
 import time as _time
 import traceback as _traceback
+import types
 
 _retval = _collections.namedtuple('_retval', 'timesig data')
 _SRC_DIR = _os.path.dirname(_os.path.abspath(__file__))
 
+SECOND = 1
+MINUTE = 60 * SECOND
+HOUR = 60 * MINUTE
+DAY = 24 * HOUR
+WEEK = 7 * DAY
+MONTH = 30 * DAY
+YEAR = 365 * DAY
+FOREVER = None
+
+OPEN_DBS = dict()
+
 def _get_cache_name(function):
+    """
+    returns a name for the module's cache db.
+    """
     module_name = _inspect.getfile(function)
     cache_name = module_name
     
@@ -74,8 +104,23 @@ def _log_error(error_str):
     except Exception:
         pass
 
+def _args_key(function, args, kwargs):
+    arguments = (args, kwargs)
+    # Check if you have a valid, cached answer, and return it.
+    # Sadly this is python version dependant
+    if _sys.version_info[0] == 2:
+        arguments_pickle = _pickle.dumps(arguments)
+    else:
+        # NOTE: protocol=0 so it's ascii, this is crucial for py3k
+        #       because shelve only works with proper strings.
+        #       Otherwise, we'd get an exception because
+        #       function.__name__ is str but dumps returns bytes.
+        arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii')
+        
+    key = function.__name__ + arguments_pickle
+    return key
 
-def filecache(seconds_of_validity, fail_silently=True):
+def filecache(seconds_of_validity=None, fail_silently=False):
     '''
     filecache is called and the decorator should be returned.
     '''
@@ -83,27 +128,11 @@ def filecache(seconds_of_validity, fail_silently=True):
         @_functools.wraps(function)
         def function_with_cache(*args, **kwargs):
             try:
-                arguments = (args, kwargs)
-
-                # make sure cache is loaded
-                if not hasattr(function, '_db'):
-                    function._db = _shelve.open(_get_cache_name(function))
-
-                # Check if you have a valid, cached answer, and return it.
-                # Sadly this is python version dependant
-                if _sys.version_info[0] == 2:
-                    arguments_pickle = _pickle.dumps(arguments)
-                else:
-                    # NOTE: protocol=0 so it's ascii, this is crucial for py3k
-                    #       because shelve only works with proper strings.
-                    #       Otherwise, we'd get an exception because
-                    #       function.__name__ is str but dumps returns bytes.
-                    arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii')
-                    
-                key = function.__name__ + arguments_pickle
+                key = _args_key(function, args, kwargs)
+                
                 if key in function._db:
                     rv = function._db[key]
-                    if _time.time() - rv.timesig < seconds_of_validity:
+                    if seconds_of_validity is None or _time.time() - rv.timesig < seconds_of_validity:
                         return rv.data
             except Exception:
                 # in any case of failure, don't let filecache break the program
@@ -129,8 +158,24 @@ def filecache(seconds_of_validity, fail_silently=True):
             
             return retval
 
+        # make sure cache is loaded
+        if not hasattr(function, '_db'):
+            cache_name = _get_cache_name(function)
+            if cache_name in OPEN_DBS:
+                function._db = OPEN_DBS[cache_name]
+            else:
+                function._db = _shelve.open(cache_name)
+                OPEN_DBS[cache_name] = function._db
+            
+            function_with_cache._db = function._db
+        
         return function_with_cache
 
+    if type(seconds_of_validity) == types.FunctionType:
+        # support for when people use '@filecache.filecache' instead of '@filecache.filecache()'
+        func = seconds_of_validity
+        return filecache_decorator(func)
+    
     return filecache_decorator
 
 
