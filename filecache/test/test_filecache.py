@@ -8,22 +8,33 @@ import os
 
 import filecache
 
+
+def erase_all_cache_files():
+    shelve_suffixes = ('.cache', '.cache.bak', '.cache.dir', '.cache.dat')
+    # os.listdir doesn't accept an empty string but dirname returns ''
+    here = os.path.dirname(__file__) or '.'
+    fname_list = os.listdir(here)
+
+    for fname in fname_list:
+        fpath = os.path.join(here, fname)
+        # NOTE: test that path still exists because chained tests sometimes don't
+        #       immediately erase things.
+        if fname.endswith(shelve_suffixes) and os.path.exists(fpath):
+            os.remove(fpath)
+
+
+# NOTE: this comes so early so that the NotInnerClass's @filecache isn't erased from the disk
+erase_all_cache_files()
+
 class TestFilecache(unittest.TestCase):
-    def erase_all_cache_files(self):
-        shelve_suffixes = ('.cache', '.cache.bak', '.cache.dir', '.cache.dat')
-        # os.listdir doesn't accept an empty string but dirname returns ''
-        here = os.path.dirname(__file__) or '.'
-        fname_list = os.listdir(here)
 
-        for fname in fname_list:
-            if fname.endswith(shelve_suffixes):
-                os.remove(os.path.join(here, fname))
-
-    def setUp(self):
-        self.erase_all_cache_files()
+    #@classmethod               
+    #def setUpClass(self):
+    #    self.erase_all_cache_files()
     
-    def tearDown(self):
-        self.erase_all_cache_files()
+    #@classmethod                
+    #def tearDownClass(self):
+    #    self.erase_all_cache_files()
     
     def test_returns(self):
         # make sure the thing works
@@ -37,7 +48,7 @@ class TestFilecache(unittest.TestCase):
         
     def test_speeds(self):
         DELAY = 0.5
-        @filecache.filecache(30)
+        @filecache.filecache(60)
         def waiter(x):
             time.sleep(DELAY)
             return x
@@ -50,7 +61,7 @@ class TestFilecache(unittest.TestCase):
         finish = time.time()
 
         # ran it 4 times but it should run faster than DELAY * 4
-        self.assertTrue(finish - start < (DELAY * 2))
+        self.assertLess(finish - start, (DELAY * 2))
 
     def test_invalidates(self):
         wait = 0.1
@@ -107,7 +118,7 @@ class TestFilecache(unittest.TestCase):
             # put anything in _db that you know will break filecache
             popper._db = 123
             
-            popper = filecache.filecache(0.1)(popper)
+            popper = filecache.filecache(0.1, fail_silently=True)(popper)
             
             first = popper()
             
@@ -128,13 +139,13 @@ class TestFilecache(unittest.TestCase):
                 self.number += x
                 return self.number
         
-        instance = B()
+        instance = NotInnerClass()
         first = instance.donothing(1)
         
         second = instance.donothing(1)
         self.assertEqual(first, second)
 
-class B:
+class NotInnerClass:
     def __init__(self):
         self.number = 1
     
@@ -146,4 +157,5 @@ class B:
 
 if __name__ == '__main__':
     unittest.main()
+    erase_all_cache_files()
 
