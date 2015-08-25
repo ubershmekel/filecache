@@ -48,6 +48,7 @@ class TestFilecache(unittest.TestCase):
         
     def test_speeds(self):
         DELAY = 0.5
+
         @filecache.filecache(60)
         def waiter(x):
             time.sleep(DELAY)
@@ -62,6 +63,20 @@ class TestFilecache(unittest.TestCase):
 
         # ran it 4 times but it should run faster than DELAY * 4
         self.assertLess(finish - start, (DELAY * 2))
+
+    def test_simple_decorate(self):
+        ran_once = {}
+
+        @filecache.filecache
+        def whatever(x):
+            if 'yes' in ran_once:
+                return 12345
+            else:
+                ran_once['yes'] = 1
+                return x
+
+        self.assertEqual(whatever(2), 2)
+        self.assertEqual(whatever(2), 2)
 
     def test_invalidates(self):
         wait = 0.1

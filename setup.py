@@ -16,7 +16,7 @@ except Exception:
 import filecache
 DOCUMENTATION = filecache.__doc__
 
-VERSION = '0.75'
+VERSION = '0.77'
 
 SETUP_DICT = dict(
     name='filecache',
@@ -24,7 +24,7 @@ SETUP_DICT = dict(
     version=VERSION,
     author='ubershmekel',
     author_email='ubershmekel@gmail.com',
-    url='http://code.google.com/p/filecache/',
+    url='https://github.com/ubershmekel/filecache',
     description='Persistent caching decorator',
     long_description=DOCUMENTATION,
     classifiers=[
