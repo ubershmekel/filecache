@@ -10,13 +10,13 @@ Install
 Usage
 ----
 
-    from filecache import filecache
+    from filecache import filecache, YEAR
 
     @filecache(24 * 60 * 60)
     def time_consuming_function(args):
         # etc
 
-    @filecache(filecache.YEAR)
+    @filecache(YEAR)
     def another_function(args):
         # etc
 
@@ -34,10 +34,21 @@ Usage
     makes sense because class methods are affected by changes in whatever
     is attached to self.
 
+* Note that pickling of the same arguments may result in different keys each
+    time you run interpreter so cache may be not used. You can work around this
+    problem by using json-serializable arguments. You can also defind `for_json`
+    method for any class that is used as argument.
+
+* You can install `dill` (`pip install dill`) to allow caching of functions that
+    accept lambdas, generators and some other types. But cache keys of arguments
+    may still change from run to run and so cache will miss
+
 * Tested on python 2.7 and 3.3
 
 * License: BSD, do what you wish with this. Could be awesome to hear if you found
 it useful and/or you have suggestions. ubershmekel at gmail
+
+
 
 
 Here's a trick to invalidate a single value:
@@ -48,3 +59,8 @@ Here's a trick to invalidate a single value:
 
     del somefunc._db[filecache._args_key(somefunc, (1,2,3), {})]
     # or just iterate of somefunc._db (it's a shelve, like a dict) to find the right key.
+
+By default cache is saved to file on every change. You can avoid this to save
+only on programm exit by using `@filecache.filecache(force_sync=False)`. But in
+that case cache may be lost if program extits in unclean manner (with Ctrl-Break
+or some exceptions)

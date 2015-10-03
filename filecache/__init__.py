@@ -9,11 +9,11 @@ the return values should be cached (use seconds, like time.sleep).
 USAGE:
 
     from filecache import filecache
-    
+
     @filecache(24 * 60 * 60)
     def time_consuming_function(args):
         # etc
-    
+
     @filecache(filecache.YEAR)
     def another_function(args):
         # etc
@@ -43,26 +43,57 @@ A trick to invalidate a single value:
     @filecache.filecache
     def somefunc(x, y, z):
         return x * y * z
-        
+
     del somefunc._db[filecache._args_key(somefunc, (1,2,3), {})]
     # or just iterate of somefunc._db (it's a shelve, like a dict) to find the right key.
 
 
 '''
-
+cache_name_suffix = ''
 
 import collections as _collections
 import datetime as _datetime
 import functools as _functools
 import inspect as _inspect
 import os as _os
-import pickle as _pickle
+try:
+    # if dill is available: use it instead of stock pickle: this will allow to
+    # pickle lambdas and several other objects
+    # use different cache name for dill pickles
+    import dill as _pickle
+    cache_name_suffix += '-dill'
+except ImportError:
+    import pickle as _pickle
 import shelve as _shelve
 import sys as _sys
 import time as _time
 import traceback as _traceback
 import types
 import atexit
+
+
+json = None
+
+def json_default(obj):
+    if hasattr(obj, 'for_json'):
+        return obj.for_json()
+    try:
+        iterable = iter(obj)
+    except TypeError:
+        pass
+    else:
+        return list(obj)
+    raise TypeError
+
+try:
+    import simplejson as json
+except ImportError:
+    pass
+
+if not json:
+    import json
+
+
 
 _retval = _collections.namedtuple('_retval', 'timesig data')
 _SRC_DIR = _os.path.dirname(_os.path.abspath(__file__))
@@ -78,18 +109,22 @@ FOREVER = None
 
 OPEN_DBS = dict()
 
+if _sys.version_info[0] == 3:
+    cache_name_suffix += '-3'
+
 def _get_cache_name(function):
     """
     returns a name for the module's cache db.
     """
     module_name = _inspect.getfile(function)
-    cache_name = module_name
-    
+    cache_name = '.' + module_name
+
     # fix for '<string>' or '<stdin>' in exec or interpreter usage.
     cache_name = cache_name.replace('<', '_lt_')
     cache_name = cache_name.replace('>', '_gt_')
-    
+
     cache_name += '.cache'
+    cache_name += cache_name_suffix
     return cache_name
 
 
@@ -107,21 +142,34 @@ def _log_error(error_str):
 
 def _args_key(function, args, kwargs):
     arguments = (args, kwargs)
+    arguments_pickle = None
+    try:
+        # prefer to use json dumps as it always returns same strings (unlike
+        # pickle.dumps())
+        arguments_pickle = json.dumps(
+            arguments,
+            sort_keys=True,
+            default=json_default,
+        )
+    except Exception:
+        pass
+
     # Check if you have a valid, cached answer, and return it.
     # Sadly this is python version dependant
-    if _sys.version_info[0] == 2:
-        arguments_pickle = _pickle.dumps(arguments)
-    else:
-        # NOTE: protocol=0 so it's ascii, this is crucial for py3k
-        #       because shelve only works with proper strings.
-        #       Otherwise, we'd get an exception because
-        #       function.__name__ is str but dumps returns bytes.
-        arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii')
-        
+    if arguments_pickle is None:
+        if _sys.version_info[0] == 2:
+            arguments_pickle = _pickle.dumps(arguments)
+        else:
+            # NOTE: protocol=0 so it's ascii, this is crucial for py3k
+            #       because shelve only works with proper strings.
+            #       Otherwise, we'd get an exception because
+            #       function.__name__ is str but dumps returns bytes.
+            arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii', 'replace')
+
     key = function.__name__ + arguments_pickle
     return key
 
-def filecache(seconds_of_validity=None, fail_silently=False):
+def filecache(seconds_of_validity=None, fail_silently=False, force_sync=True):
     '''
     filecache is called and the decorator should be returned.
     '''
@@ -130,7 +178,7 @@ def filecache(seconds_of_validity=None, fail_silently=False):
         def function_with_cache(*args, **kwargs):
             try:
                 key = _args_key(function, args, kwargs)
-                
+
                 if key in function._db:
                     rv = function._db[key]
                     if seconds_of_validity is None or _time.time() - rv.timesig < seconds_of_validity:
@@ -141,7 +189,7 @@ def filecache(seconds_of_validity=None, fail_silently=False):
                 _log_error(error_str)
                 if not fail_silently:
                     raise
-            
+
             retval = function(*args, **kwargs)
 
             # store in cache
@@ -149,14 +197,15 @@ def filecache(seconds_of_validity=None, fail_silently=False):
             # NOTE: it's importatnt to do _db.sync() because otherwise the cache doesn't survive Ctrl-Break!
             try:
                 function._db[key] = _retval(_time.time(), retval)
-                function._db.sync()
+                if force_sync:
+                    function._db.sync()
             except Exception:
                 # in any case of failure, don't let filecache break the program
                 error_str = _traceback.format_exc()
                 _log_error(error_str)
                 if not fail_silently:
                     raise
-            
+
             return retval
 
         # make sure cache is loaded
@@ -168,9 +217,9 @@ def filecache(seconds_of_validity=None, fail_silently=False):
                 function._db = _shelve.open(cache_name)
                 OPEN_DBS[cache_name] = function._db
                 atexit.register(function._db.close)
-            
+
             function_with_cache._db = function._db
-        
+
         return function_with_cache
 
     if type(seconds_of_validity) == types.FunctionType:
@@ -178,7 +227,7 @@ def filecache(seconds_of_validity=None, fail_silently=False):
         func = seconds_of_validity
         seconds_of_validity = None
         return filecache_decorator(func)
-    
+
     return filecache_decorator
 
 
