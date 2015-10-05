@@ -140,7 +140,7 @@ def _log_error(error_str):
     except Exception:
         pass
 
-def _args_key(function, args, kwargs):
+def _args_key(function, args, kwargs, json_default):
     arguments = (args, kwargs)
     arguments_pickle = None
     try:
@@ -169,7 +169,7 @@ def _args_key(function, args, kwargs):
     key = function.__name__ + arguments_pickle
     return key
 
-def filecache(seconds_of_validity=None, fail_silently=False, force_sync=True):
+def filecache(seconds_of_validity=None, fail_silently=False, force_sync=True, json_default=json_default):
     '''
     filecache is called and the decorator should be returned.
     '''
@@ -177,7 +177,7 @@ def filecache(seconds_of_validity=None, fail_silently=False, force_sync=True):
         @_functools.wraps(function)
         def function_with_cache(*args, **kwargs):
             try:
-                key = _args_key(function, args, kwargs)
+                key = _args_key(function, args, kwargs, json_default)
 
                 if key in function._db:
                     rv = function._db[key]
