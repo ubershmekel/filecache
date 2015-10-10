@@ -117,7 +117,9 @@ def _get_cache_name(function):
     returns a name for the module's cache db.
     """
     module_name = _inspect.getfile(function)
-    cache_name = '.' + module_name
+    module_parts = module_name.rsplit('/', 1)
+    module_parts[-1] = '.' + module_parts[-1]
+    cache_name = '/'.join(module_parts)
 
     # fix for '<string>' or '<stdin>' in exec or interpreter usage.
     cache_name = cache_name.replace('<', '_lt_')
