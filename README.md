@@ -13,12 +13,16 @@ and parse webpages. You can specify how long the return values should be cached 
 
     from filecache import filecache
 
-    @filecache(24 * 60 * 60)
+    @filecache
     def time_consuming_function(args):
-        # etc
+        # cache results forever
 
     @filecache(filecache.YEAR)
     def another_function(args):
+        # etc
+
+    @filecache(24 * 60 * 60)
+    def yet_another_function(args):
         # etc
 
 # How it works
