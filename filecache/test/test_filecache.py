@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 
 import unittest
 import imp
@@ -159,6 +159,20 @@ class TestFilecache(unittest.TestCase):
         
         second = instance.donothing(1)
         self.assertEqual(first, second)
+
+    def test_utf_8_string(self):
+        ran_once = {}
+
+        @filecache.filecache
+        def parse_pounds(x):
+            if 'yes' in ran_once:
+                return 12345
+            else:
+                ran_once['yes'] = 1
+                return x
+
+        self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
+        self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
 
 class NotInnerClass:
     def __init__(self):
