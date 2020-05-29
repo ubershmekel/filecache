@@ -27,6 +27,7 @@ SETUP_DICT = dict(
     url='https://github.com/ubershmekel/filecache',
     description='Persistent caching decorator',
     long_description=DOCUMENTATION,
+    long_description_content_type="text/markdown",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
