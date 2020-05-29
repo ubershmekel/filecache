@@ -57,6 +57,7 @@ import functools as _functools
 import inspect as _inspect
 import os as _os
 import pickle as _pickle
+import codecs as _codecs
 import shelve as _shelve
 import sys as _sys
 import time as _time
@@ -116,7 +117,7 @@ def _args_key(function, args, kwargs):
         #       because shelve only works with proper strings.
         #       Otherwise, we'd get an exception because
         #       function.__name__ is str but dumps returns bytes.
-        arguments_pickle = _pickle.dumps(arguments, protocol=0).decode('ascii')
+        arguments_pickle = _codecs.encode(_pickle.dumps(arguments, protocol=0), "base64").decode()
         
     key = function.__name__ + arguments_pickle
     return key
