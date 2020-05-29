@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+import datetime
 import imp
 import time
 import random
@@ -185,6 +186,19 @@ class TestFilecache(unittest.TestCase):
 
         self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
         self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
+    
+    
+    def test_datetime_args(self):
+        start = datetime.datetime.utcnow()
+
+        @filecache.filecache(100)
+        def go_back_an_hour(dt):
+            return dt - datetime.timedelta(hours=1)
+
+        new_time = go_back_an_hour(start)
+        new_time_2 = go_back_an_hour(start)
+        self.assertEqual(new_time, new_time_2)
+        self.assertTrue(new_time < start, "Somehow datetime subtraction did not work")
 
 class NotInnerClass:
     def __init__(self):
