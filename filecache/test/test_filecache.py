@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 
 import unittest
 import imp
@@ -10,16 +10,28 @@ import filecache
 
 
 def erase_all_cache_files():
+    # Cache files are usually next to the code (__file__) except
+    # for when it's an interpreter which just goes to wherever the
+    # current process directory is.
+    # Tests need to wipe them all clean, especially if both Py2 and Py3 are being tested.
+    code_dir = os.path.abspath(os.path.dirname(__file__))
+    process_dir = os.path.abspath('.')
+    erase_dir_cache_files(code_dir)
+    if code_dir != process_dir:
+        erase_dir_cache_files(process_dir)
+
+
+def erase_dir_cache_files(dir_path):
     shelve_suffixes = ('.cache', '.cache.bak', '.cache.dir', '.cache.dat')
     # os.listdir doesn't accept an empty string but dirname returns ''
-    here = os.path.dirname(__file__) or '.'
-    fname_list = os.listdir(here)
+    fname_list = os.listdir(dir_path)
 
     for fname in fname_list:
-        fpath = os.path.join(here, fname)
+        fpath = os.path.join(dir_path, fname)
         # NOTE: test that path still exists because chained tests sometimes don't
         #       immediately erase things.
         if fname.endswith(shelve_suffixes) and os.path.exists(fpath):
+            print("erasing {}".format(fpath))
             os.remove(fpath)
 
 
@@ -159,6 +171,20 @@ class TestFilecache(unittest.TestCase):
         
         second = instance.donothing(1)
         self.assertEqual(first, second)
+
+    def test_utf_8_string(self):
+        ran_once = {}
+
+        @filecache.filecache
+        def parse_pounds(x):
+            if 'yes' in ran_once:
+                return 12345
+            else:
+                ran_once['yes'] = 1
+                return x
+
+        self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
+        self.assertEqual(parse_pounds("¼ pounds"), "¼ pounds")
 
 class NotInnerClass:
     def __init__(self):
