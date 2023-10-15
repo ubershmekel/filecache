@@ -65,11 +65,6 @@ import traceback as _traceback
 import typing
 import atexit
 
-P = typing.ParamSpec('P')
-T = typing.TypeVar('T')
-R = typing.TypeVar('R')
-C = typing.TypeVar('C', bound=typing.Callable[..., typing.Any])
-
 class _retval(typing.NamedTuple, typing.Generic[T]):
     timesig: float
     data: T
@@ -86,6 +81,11 @@ YEAR: typing.Final[int] = 365 * DAY
 FOREVER: typing.Final[typing.Literal[None]] = None
 
 OPEN_DBS: typing.Final[dict[str, _shelve.Shelf]] = dict()
+
+P = typing.ParamSpec('P')
+T = typing.TypeVar('T')
+R = typing.TypeVar('R')
+C = typing.TypeVar('C', bound=typing.Callable[..., typing.Any])
 
 def _get_cache_name(function: typing.Callable[..., typing.Any]) -> str:
     """
