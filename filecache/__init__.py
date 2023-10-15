@@ -210,10 +210,10 @@ def filecache(
                 fail_silently=fail_silently,
             )
 
-        # support for when people use '@filecache.filecache' instead of '@filecache.filecache()'
         return filecache_decorator
 
     else:
+        # support for when people use '@filecache.filecache' instead of '@filecache.filecache()'
         fast_wrapper = CachedFileCacheCallable(
             arg0,
             seconds_of_validity=None,
